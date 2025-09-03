@@ -13,7 +13,7 @@ RSS_URLS = [
 DB_PATH = "news.db"
 
 # 3) Feedparser: user-agent (certains sites bloquent sinon)
-#feedparser.USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Python/feedparser"
+feedparser.USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Python/feedparser"
 
 #Creation de news db si elle n'existe pas 
 
