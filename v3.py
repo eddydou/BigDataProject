@@ -131,7 +131,10 @@ def ensure_db():
         add_column_if_missing(con, "articles", "publisher_domain",  "TEXT")
         add_column_if_missing(con, "articles", "publisher_country", "TEXT")
         add_column_if_missing(con, "articles", "lang",              "TEXT")
-
+        add_column_if_missing(con, "articles", "countries",  "TEXT")
+        add_column_if_missing(con, "articles", "cities",     "TEXT")
+        add_column_if_missing(con, "articles", "events",     "TEXT")
+        add_column_if_missing(con, "articles", "presidents", "TEXT")
         # table entities
         con.execute("""
             CREATE TABLE IF NOT EXISTS entities (
