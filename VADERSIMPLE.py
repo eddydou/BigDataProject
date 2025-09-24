@@ -186,8 +186,8 @@ def sentiment_on_df(df: pd.DataFrame) -> pd.DataFrame:
         "full_text": full_text,
         "language": lang.astype(str).str[:16],
         # Dates : aucune transformation, on force juste en string pour l'insert
-        "seendate": seendt.astype(str),
-        "published_at": pubdt.astype(str)
+        "seendate": seendt,
+        "published_at": pubdt
     })
 
 

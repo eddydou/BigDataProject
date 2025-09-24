@@ -1,624 +1,409 @@
-{
- "cells": [
-  {
-   "cell_type": "markdown",
-   "id": "7bc6a9f4",
-   "metadata": {},
-   "source": [
-    "# Importer des données dans MariaDB avec GdeltDoc\n",
-    "\n",
-    "Ce notebook guide l'importation de données GDELT dans une base MariaDB en utilisant les bibliothèques appropriées."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "3958008a",
-   "metadata": {},
-   "source": [
-    "## 1. Importer les bibliothèques nécessaires\n",
-    "\n",
-    "Nous allons importer `mariadb`, `pandas`, ainsi que `GdeltDoc` et `Filters` pour manipuler les données GDELT."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 16,
-   "id": "2090a000",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import mariadb\n",
-    "import pandas as pd\n",
-    "import sqlalchemy\n",
-    "from gdeltdoc import GdeltDoc, Filters"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "7c1d1d70",
-   "metadata": {},
-   "source": [
-    "## 2. Configurer la connexion à MariaDB\n",
-    "\n",
-    "Définissons les paramètres de connexion à la base MariaDB dans un dictionnaire."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 2,
-   "id": "278a38e6",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "DB_CONFIG = {\n",
-    "    \"host\": \"localhost\",\n",
-    "    \"user\": \"florent\",           \n",
-    "    \"password\": \"2003\",  \n",
-    "    \"database\": \"gdelt_db\"\n",
-    "}"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "65d069c3",
-   "metadata": {},
-   "source": [
-    "## 3. Se connecter à la base de données\n",
-    "\n",
-    "Établissons la connexion à MariaDB en utilisant les paramètres définis."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 3,
-   "id": "ebfaed5f",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Connexion réussie à MariaDB.\n"
-     ]
-    }
-   ],
-   "source": [
-    "# ...existing code...\n",
-    "try:\n",
-    "    conn = mariadb.connect(**DB_CONFIG)\n",
-    "    print(\"Connexion réussie à MariaDB.\")\n",
-    "except mariadb.Error as e:\n",
-    "    print(f\"Erreur lors de la connexion à MariaDB: {e}\")\n",
-    "# ...existing code..."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "c357d3f1",
-   "metadata": {},
-   "source": [
-    "## 4. Exécuter une requête de test\n",
-    "\n",
-    "Vérifions la connexion en exécutant une requête simple : `SELECT VERSION()`."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 4,
-   "id": "776a5c36",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Version de MariaDB : 12.0.2-MariaDB\n"
-     ]
-    }
-   ],
-   "source": [
-    "cur = conn.cursor()\n",
-    "cur.execute(\"SELECT VERSION()\")\n",
-    "version = cur.fetchone()\n",
-    "print(\"Version de MariaDB :\", version[0])"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "978ae822",
-   "metadata": {},
-   "source": [
-    "## 5. Importer des données avec GdeltDoc\n",
-    "\n",
-    "Téléchargeons et préparons des données GDELT à l'aide de GdeltDoc et Filters."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 5,
-   "id": "82af9ed7",
-   "metadata": {},
-   "outputs": [
-    {
-     "data": {
-      "text/html": [
-       "<div>\n",
-       "<style scoped>\n",
-       "    .dataframe tbody tr th:only-of-type {\n",
-       "        vertical-align: middle;\n",
-       "    }\n",
-       "\n",
-       "    .dataframe tbody tr th {\n",
-       "        vertical-align: top;\n",
-       "    }\n",
-       "\n",
-       "    .dataframe thead th {\n",
-       "        text-align: right;\n",
-       "    }\n",
-       "</style>\n",
-       "<table border=\"1\" class=\"dataframe\">\n",
-       "  <thead>\n",
-       "    <tr style=\"text-align: right;\">\n",
-       "      <th></th>\n",
-       "      <th>url</th>\n",
-       "      <th>url_mobile</th>\n",
-       "      <th>title</th>\n",
-       "      <th>seendate</th>\n",
-       "      <th>socialimage</th>\n",
-       "      <th>domain</th>\n",
-       "      <th>language</th>\n",
-       "      <th>sourcecountry</th>\n",
-       "    </tr>\n",
-       "  </thead>\n",
-       "  <tbody>\n",
-       "    <tr>\n",
-       "      <th>0</th>\n",
-       "      <td>https://www.yahoo.com/news/research-shows-majo...</td>\n",
-       "      <td></td>\n",
-       "      <td>Research shows that a majority of Christian re...</td>\n",
-       "      <td>20250402T140000Z</td>\n",
-       "      <td>https://s.yimg.com/ny/api/res/1.2/udC7X7SuVJ38...</td>\n",
-       "      <td>yahoo.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>United States</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>1</th>\n",
-       "      <td>https://www.geo.tv/latest/598587-climate-chang...</td>\n",
-       "      <td></td>\n",
-       "      <td>Climate change minister meets global leaders a...</td>\n",
-       "      <td>20250405T173000Z</td>\n",
-       "      <td>https://www.geo.tv/assets/uploads/updates/2025...</td>\n",
-       "      <td>geo.tv</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Pakistan</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>2</th>\n",
-       "      <td>https://www.thehindu.com/education/tamil-nadu-...</td>\n",
-       "      <td>https://www.thehindu.com/education/tamil-nadu-...</td>\n",
-       "      <td>Tamil Nadu CM Stalin to introduce climate chan...</td>\n",
-       "      <td>20250204T123000Z</td>\n",
-       "      <td>https://th-i.thgim.com/public/incoming/za10b2/...</td>\n",
-       "      <td>thehindu.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>India</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>3</th>\n",
-       "      <td>https://www.counterpunch.org/2025/03/24/senato...</td>\n",
-       "      <td></td>\n",
-       "      <td>Senator Whitehouse Climate Crisis / Property I...</td>\n",
-       "      <td>20250324T073000Z</td>\n",
-       "      <td>https://www.counterpunch.org/wp-content/upload...</td>\n",
-       "      <td>counterpunch.org</td>\n",
-       "      <td>English</td>\n",
-       "      <td>United States</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>4</th>\n",
-       "      <td>https://www.brecorder.com/news/40346912/govt-t...</td>\n",
-       "      <td></td>\n",
-       "      <td>Govt to set up a climate change authority - Pa...</td>\n",
-       "      <td>20250208T020000Z</td>\n",
-       "      <td></td>\n",
-       "      <td>brecorder.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Pakistan</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>5</th>\n",
-       "      <td>https://allafrica.com/stories/202503190020.html</td>\n",
-       "      <td></td>\n",
-       "      <td>South Africa : Cosatu Welcomes President Cyril...</td>\n",
-       "      <td>20250319T054500Z</td>\n",
-       "      <td></td>\n",
-       "      <td>allafrica.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Nigeria</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>6</th>\n",
-       "      <td>https://www.livescience.com/planet-earth/clima...</td>\n",
-       "      <td></td>\n",
-       "      <td>Climate change : Facts about our warming planet</td>\n",
-       "      <td>20250414T214500Z</td>\n",
-       "      <td>https://cdn.mos.cms.futurecdn.net/LYcYs5Zgy2wt...</td>\n",
-       "      <td>livescience.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>United States</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>7</th>\n",
-       "      <td>https://www.thestandard.co.zw/opinion-analysis...</td>\n",
-       "      <td>https://www.newsday.co.zw/thestandard/amp/opin...</td>\n",
-       "      <td>Climate resilience gaps , opportunities in Africa</td>\n",
-       "      <td>20250404T220000Z</td>\n",
-       "      <td>https://cdn.thestandard.co.zw/images/newsday/u...</td>\n",
-       "      <td>thestandard.co.zw</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Zimbabwe</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>8</th>\n",
-       "      <td>http://www.ug.edu.gh/events/inaugural-lecture-...</td>\n",
-       "      <td></td>\n",
-       "      <td>Inaugural Lecture by Prof . Nana Ama Brown Klutse</td>\n",
-       "      <td>20250306T001500Z</td>\n",
-       "      <td></td>\n",
-       "      <td>ug.edu.gh</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Ghana</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>9</th>\n",
-       "      <td>https://www.ghanaweb.com/GhanaHomePage/NewsArc...</td>\n",
-       "      <td>https://mobile.ghanaweb.com/GhanaHomePage/News...</td>\n",
-       "      <td>German Ambassador pays courtesy call on Minist...</td>\n",
-       "      <td>20250305T123000Z</td>\n",
-       "      <td>https://cdn.ghanaweb.com/imagelib/pics/873/873...</td>\n",
-       "      <td>ghanaweb.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Ghana</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>10</th>\n",
-       "      <td>https://www.thenews.com.pk/latest/1298331-clim...</td>\n",
-       "      <td>https://www.thenews.com.pk/amp/1298331-climate...</td>\n",
-       "      <td>Climate change minister represents Pakistan at...</td>\n",
-       "      <td>20250405T174500Z</td>\n",
-       "      <td>https://www.thenews.com.pk/assets/uploads/upda...</td>\n",
-       "      <td>thenews.com.pk</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Pakistan</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>11</th>\n",
-       "      <td>https://www.namibian.com.na/journalists-get-th...</td>\n",
-       "      <td></td>\n",
-       "      <td>Journalists get the grip of climate change rep...</td>\n",
-       "      <td>20250406T210000Z</td>\n",
-       "      <td>https://d4f7y6nbupj5z.cloudfront.net/wp-conten...</td>\n",
-       "      <td>namibian.com.na</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Namibia</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>12</th>\n",
-       "      <td>https://www.cfr.org/event/climate-realism-init...</td>\n",
-       "      <td></td>\n",
-       "      <td>Climate Realism Initiative Launch</td>\n",
-       "      <td>20250402T153000Z</td>\n",
-       "      <td>https://www.cfr.org/event/Climate%20Realism%20...</td>\n",
-       "      <td>cfr.org</td>\n",
-       "      <td>English</td>\n",
-       "      <td>United States</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>13</th>\n",
-       "      <td>https://dunyanews.tv/en/Pakistan/866941-justic...</td>\n",
-       "      <td>https://dunyanews.tv/amp/english/866941.php</td>\n",
-       "      <td>Justice Mansoor calls for climate diplomacy to...</td>\n",
-       "      <td>20250207T161500Z</td>\n",
-       "      <td>https://img.dunyanews.tv/news/2025/February/02...</td>\n",
-       "      <td>dunyanews.tv</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Pakistan</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>14</th>\n",
-       "      <td>https://bgr.com/science/this-website-shows-all...</td>\n",
-       "      <td></td>\n",
-       "      <td>This website shows all the glaciers that have ...</td>\n",
-       "      <td>20250319T223000Z</td>\n",
-       "      <td>https://bgr.com/wp-content/uploads/2023/02/Ado...</td>\n",
-       "      <td>bgr.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>United States</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>15</th>\n",
-       "      <td>https://phys.org/news/2025-04-news-climate-per...</td>\n",
-       "      <td>https://phys.org/news/2025-04-news-climate-per...</td>\n",
-       "      <td>News on climate change is more persuasive than...</td>\n",
-       "      <td>20250422T160000Z</td>\n",
-       "      <td>https://scx2.b-cdn.net/gfx/news/2025/news-on-c...</td>\n",
-       "      <td>phys.org</td>\n",
-       "      <td>English</td>\n",
-       "      <td>United States</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>16</th>\n",
-       "      <td>https://www.myjoyonline.com/knust-researchers-...</td>\n",
-       "      <td></td>\n",
-       "      <td>KNUST researchers establish strong link betwee...</td>\n",
-       "      <td>20250325T194500Z</td>\n",
-       "      <td>https://www.myjoyonline.com/wp-content/uploads...</td>\n",
-       "      <td>myjoyonline.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>Ghana</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>17</th>\n",
-       "      <td>https://www.hindustantimes.com/world-news/us-n...</td>\n",
-       "      <td>https://www.hindustantimes.com/world-news/us-n...</td>\n",
-       "      <td>US military cancels climate change studies tha...</td>\n",
-       "      <td>20250311T013000Z</td>\n",
-       "      <td>https://www.hindustantimes.com/ht-img/img/2024...</td>\n",
-       "      <td>hindustantimes.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>India</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>18</th>\n",
-       "      <td>https://www.yahoo.com/news/gabbard-pressed-omi...</td>\n",
-       "      <td></td>\n",
-       "      <td>Gabbard pressed on omission of climate change ...</td>\n",
-       "      <td>20250325T234500Z</td>\n",
-       "      <td>https://media.zenfs.com/en/newsnation_articles...</td>\n",
-       "      <td>yahoo.com</td>\n",
-       "      <td>English</td>\n",
-       "      <td>United States</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>19</th>\n",
-       "      <td>https://phys.org/news/2025-03-climate-vulnerab...</td>\n",
-       "      <td>https://phys.org/news/2025-03-climate-vulnerab...</td>\n",
-       "      <td>What climate vulnerability actually looks like</td>\n",
-       "      <td>20250306T180000Z</td>\n",
-       "      <td>https://scx2.b-cdn.net/gfx/news/hires/2022/flo...</td>\n",
-       "      <td>phys.org</td>\n",
-       "      <td>English</td>\n",
-       "      <td>United States</td>\n",
-       "    </tr>\n",
-       "  </tbody>\n",
-       "</table>\n",
-       "</div>"
-      ],
-      "text/plain": [
-       "                                                  url  \\\n",
-       "0   https://www.yahoo.com/news/research-shows-majo...   \n",
-       "1   https://www.geo.tv/latest/598587-climate-chang...   \n",
-       "2   https://www.thehindu.com/education/tamil-nadu-...   \n",
-       "3   https://www.counterpunch.org/2025/03/24/senato...   \n",
-       "4   https://www.brecorder.com/news/40346912/govt-t...   \n",
-       "5     https://allafrica.com/stories/202503190020.html   \n",
-       "6   https://www.livescience.com/planet-earth/clima...   \n",
-       "7   https://www.thestandard.co.zw/opinion-analysis...   \n",
-       "8   http://www.ug.edu.gh/events/inaugural-lecture-...   \n",
-       "9   https://www.ghanaweb.com/GhanaHomePage/NewsArc...   \n",
-       "10  https://www.thenews.com.pk/latest/1298331-clim...   \n",
-       "11  https://www.namibian.com.na/journalists-get-th...   \n",
-       "12  https://www.cfr.org/event/climate-realism-init...   \n",
-       "13  https://dunyanews.tv/en/Pakistan/866941-justic...   \n",
-       "14  https://bgr.com/science/this-website-shows-all...   \n",
-       "15  https://phys.org/news/2025-04-news-climate-per...   \n",
-       "16  https://www.myjoyonline.com/knust-researchers-...   \n",
-       "17  https://www.hindustantimes.com/world-news/us-n...   \n",
-       "18  https://www.yahoo.com/news/gabbard-pressed-omi...   \n",
-       "19  https://phys.org/news/2025-03-climate-vulnerab...   \n",
-       "\n",
-       "                                           url_mobile  \\\n",
-       "0                                                       \n",
-       "1                                                       \n",
-       "2   https://www.thehindu.com/education/tamil-nadu-...   \n",
-       "3                                                       \n",
-       "4                                                       \n",
-       "5                                                       \n",
-       "6                                                       \n",
-       "7   https://www.newsday.co.zw/thestandard/amp/opin...   \n",
-       "8                                                       \n",
-       "9   https://mobile.ghanaweb.com/GhanaHomePage/News...   \n",
-       "10  https://www.thenews.com.pk/amp/1298331-climate...   \n",
-       "11                                                      \n",
-       "12                                                      \n",
-       "13        https://dunyanews.tv/amp/english/866941.php   \n",
-       "14                                                      \n",
-       "15  https://phys.org/news/2025-04-news-climate-per...   \n",
-       "16                                                      \n",
-       "17  https://www.hindustantimes.com/world-news/us-n...   \n",
-       "18                                                      \n",
-       "19  https://phys.org/news/2025-03-climate-vulnerab...   \n",
-       "\n",
-       "                                                title          seendate  \\\n",
-       "0   Research shows that a majority of Christian re...  20250402T140000Z   \n",
-       "1   Climate change minister meets global leaders a...  20250405T173000Z   \n",
-       "2   Tamil Nadu CM Stalin to introduce climate chan...  20250204T123000Z   \n",
-       "3   Senator Whitehouse Climate Crisis / Property I...  20250324T073000Z   \n",
-       "4   Govt to set up a climate change authority - Pa...  20250208T020000Z   \n",
-       "5   South Africa : Cosatu Welcomes President Cyril...  20250319T054500Z   \n",
-       "6     Climate change : Facts about our warming planet  20250414T214500Z   \n",
-       "7   Climate resilience gaps , opportunities in Africa  20250404T220000Z   \n",
-       "8   Inaugural Lecture by Prof . Nana Ama Brown Klutse  20250306T001500Z   \n",
-       "9   German Ambassador pays courtesy call on Minist...  20250305T123000Z   \n",
-       "10  Climate change minister represents Pakistan at...  20250405T174500Z   \n",
-       "11  Journalists get the grip of climate change rep...  20250406T210000Z   \n",
-       "12                  Climate Realism Initiative Launch  20250402T153000Z   \n",
-       "13  Justice Mansoor calls for climate diplomacy to...  20250207T161500Z   \n",
-       "14  This website shows all the glaciers that have ...  20250319T223000Z   \n",
-       "15  News on climate change is more persuasive than...  20250422T160000Z   \n",
-       "16  KNUST researchers establish strong link betwee...  20250325T194500Z   \n",
-       "17  US military cancels climate change studies tha...  20250311T013000Z   \n",
-       "18  Gabbard pressed on omission of climate change ...  20250325T234500Z   \n",
-       "19     What climate vulnerability actually looks like  20250306T180000Z   \n",
-       "\n",
-       "                                          socialimage              domain  \\\n",
-       "0   https://s.yimg.com/ny/api/res/1.2/udC7X7SuVJ38...           yahoo.com   \n",
-       "1   https://www.geo.tv/assets/uploads/updates/2025...              geo.tv   \n",
-       "2   https://th-i.thgim.com/public/incoming/za10b2/...        thehindu.com   \n",
-       "3   https://www.counterpunch.org/wp-content/upload...    counterpunch.org   \n",
-       "4                                                           brecorder.com   \n",
-       "5                                                           allafrica.com   \n",
-       "6   https://cdn.mos.cms.futurecdn.net/LYcYs5Zgy2wt...     livescience.com   \n",
-       "7   https://cdn.thestandard.co.zw/images/newsday/u...   thestandard.co.zw   \n",
-       "8                                                               ug.edu.gh   \n",
-       "9   https://cdn.ghanaweb.com/imagelib/pics/873/873...        ghanaweb.com   \n",
-       "10  https://www.thenews.com.pk/assets/uploads/upda...      thenews.com.pk   \n",
-       "11  https://d4f7y6nbupj5z.cloudfront.net/wp-conten...     namibian.com.na   \n",
-       "12  https://www.cfr.org/event/Climate%20Realism%20...             cfr.org   \n",
-       "13  https://img.dunyanews.tv/news/2025/February/02...        dunyanews.tv   \n",
-       "14  https://bgr.com/wp-content/uploads/2023/02/Ado...             bgr.com   \n",
-       "15  https://scx2.b-cdn.net/gfx/news/2025/news-on-c...            phys.org   \n",
-       "16  https://www.myjoyonline.com/wp-content/uploads...     myjoyonline.com   \n",
-       "17  https://www.hindustantimes.com/ht-img/img/2024...  hindustantimes.com   \n",
-       "18  https://media.zenfs.com/en/newsnation_articles...           yahoo.com   \n",
-       "19  https://scx2.b-cdn.net/gfx/news/hires/2022/flo...            phys.org   \n",
-       "\n",
-       "   language  sourcecountry  \n",
-       "0   English  United States  \n",
-       "1   English       Pakistan  \n",
-       "2   English          India  \n",
-       "3   English  United States  \n",
-       "4   English       Pakistan  \n",
-       "5   English        Nigeria  \n",
-       "6   English  United States  \n",
-       "7   English       Zimbabwe  \n",
-       "8   English          Ghana  \n",
-       "9   English          Ghana  \n",
-       "10  English       Pakistan  \n",
-       "11  English        Namibia  \n",
-       "12  English  United States  \n",
-       "13  English       Pakistan  \n",
-       "14  English  United States  \n",
-       "15  English  United States  \n",
-       "16  English          Ghana  \n",
-       "17  English          India  \n",
-       "18  English  United States  \n",
-       "19  English  United States  "
-      ]
-     },
-     "execution_count": 5,
-     "metadata": {},
-     "output_type": "execute_result"
-    }
-   ],
-   "source": [
-    "from gdeltdoc import GdeltDoc, Filters, near, repeat\n",
-    "\n",
-    "f = Filters(\n",
-    "    start_date = \"2020-05-01\",\n",
-    "    end_date = \"2025-05-02\",\n",
-    "    num_records = 250,\n",
-    "    keyword = \"climate change\",\n",
-    "    # domain = [\"bbc.co.uk\", \"nytimes.com\"],\n",
-    "    # country = [\"UK\", \"US\"],\n",
-    "    # theme = \"GENERAL_HEALTH\",\n",
-    "    # near = near(10, \"airline\", \"carbon\"),\n",
-    "    #repeat = repeat(3, \"\"),\n",
-    "    language= \"ENGLISH\"\n",
-    ")\n",
-    "\n",
-    "gd = GdeltDoc()\n",
-    "\n",
-    "# Search for articles matching the filters\n",
-    "articles = gd.article_search(f)\n",
-    "\n",
-    "# Get a timeline of the number of articles matching the filters\n",
-    "timeline = gd.timeline_search(\"timelinevol\", f)\n",
-    "\n",
-    "articles.head(20)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "ab324899",
-   "metadata": {},
-   "source": [
-    "## 6. Insérer des données dans MariaDB\n",
-    "\n",
-    "Insérons les données récupérées dans une table MariaDB à l'aide de pandas ou du curseur MariaDB."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 14,
-   "id": "843a3bcd",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import sqlalchemy"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 15,
-   "id": "8814d8be",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Colonnes du DataFrame : ['url', 'url_mobile', 'title', 'seendate', 'socialimage', 'domain', 'language', 'sourcecountry']\n",
-      "Données insérées dans la table gdelt_events.\n"
-     ]
-    }
-   ],
-   "source": [
-    "# ...existing code...\n",
-    "from sqlalchemy import create_engine\n",
-    "\n",
-    "# Crée l'engine SQLAlchemy pour MariaDB\n",
-    "engine = create_engine(\"mariadb+mariadbconnector://florent:2003@localhost/gdelt_db\")\n",
-    "\n",
-    "# Vérifie le type de 'articles' (doit être une liste de dict ou un DataFrame)\n",
-    "if not isinstance(articles, pd.DataFrame):\n",
-    "    df_gdelt = pd.DataFrame(articles)\n",
-    "else:\n",
-    "    df_gdelt = articles\n",
-    "\n",
-    "# Affiche les colonnes pour vérifier la correspondance avec la table\n",
-    "print(\"Colonnes du DataFrame :\", df_gdelt.columns.tolist())\n",
-    "\n",
-    "# Insère dans la table 'gdelt_events'\n",
-    "try:\n",
-    "    df_gdelt.to_sql('gdelt_events', con=engine, if_exists='append', index=False)\n",
-    "    print(\"Données insérées dans la table gdelt_events.\")\n",
-    "except Exception as e:\n",
-    "    print(\"Erreur lors de l'insertion :\", e)\n",
-    "# ...existing code..."
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.13.7"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+# pip install gdeltdoc vaderSentiment beautifulsoup4 sqlalchemy pymysql
+import pandas as pd
+import re, html
+import hashlib
+from bs4 import BeautifulSoup
+from datetime import datetime
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from gdeltdoc import GdeltDoc, Filters, repeat
+
+# ==== DB SETUP ===============================================================
+USE_MARIADB = True
+
+from sqlalchemy import create_engine, text
+
+USER = "root"
+PWD  = "2003"
+HOST = "127.0.0.1"
+PORT = 3306
+DB   = "NewsVader"
+
+if USE_MARIADB:
+    ENGINE_URL = f"mysql+pymysql://{USER}:{PWD}@{HOST}:{PORT}/{DB}?charset=utf8mb4"
+else:
+    ENGINE_URL = "sqlite:///NewsVader.db"
+
+# Crée la base si elle n'existe pas (MariaDB)
+if USE_MARIADB:
+    ADMIN_URL = f"mysql+pymysql://{USER}:{PWD}@{HOST}:{PORT}/?charset=utf8mb4"
+    admin_engine = create_engine(ADMIN_URL, future=True, pool_pre_ping=True)
+    with admin_engine.begin() as conn:
+        conn.exec_driver_sql(f"""
+            CREATE DATABASE IF NOT EXISTS {DB}
+            CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+        """)
+
+engine = create_engine(ENGINE_URL, future=True, pool_pre_ping=True)
+
+DDL_ARTICLES_SQLITE = """
+CREATE TABLE IF NOT EXISTS articles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source TEXT,
+  url TEXT NOT NULL,
+  title TEXT,
+  description TEXT,
+  content TEXT,
+  full_text TEXT,
+  published_date TEXT,
+  gdelt_date TEXT,
+  language TEXT,
+  sentiment_compound REAL,
+  sentiment_pos REAL,
+  sentiment_neu REAL,
+  sentiment_neg REAL,
+  sentiment_label TEXT,
+  UNIQUE(url) ON CONFLICT IGNORE
+);
+"""
+
+DDL_ARTICLES_MYSQL = """
+CREATE TABLE IF NOT EXISTS `articles` (
+  `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `source` VARCHAR(255),
+  `url` TEXT NOT NULL,
+  `url_hash` CHAR(32) NOT NULL,
+  `title` TEXT,
+  `description` MEDIUMTEXT,
+  `content` MEDIUMTEXT,
+  `full_text` MEDIUMTEXT,
+  `published_date` VARCHAR(32) NULL,    -- Date de publication de l'article
+  `gdelt_date` VARCHAR(32) NULL,        -- Date de découverte par GDELT
+  `language` VARCHAR(16),
+  `sentiment_compound` DOUBLE,
+  `sentiment_pos` DOUBLE,
+  `sentiment_neu` DOUBLE,
+  `sentiment_neg` DOUBLE,
+  `sentiment_label` VARCHAR(16),
+  UNIQUE KEY `uk_url_hash` (`url_hash`),
+  KEY `idx_published_date` (`published_date`),
+  KEY `idx_gdelt_date` (`gdelt_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+"""
+
+def create_table_safely():
+    """Crée la table articles de manière sécurisée avec vérifications"""
+    try:
+        with engine.begin() as conn:
+            # Vérification si la table existe déjà
+            if USE_MARIADB:
+                result = conn.exec_driver_sql("""
+                    SELECT COUNT(*) as count FROM information_schema.tables 
+                    WHERE table_schema = %s AND table_name = 'articles'
+                """, (DB,))
+                exists = result.scalar() > 0
+            else:
+                result = conn.exec_driver_sql("""
+                    SELECT COUNT(*) as count FROM sqlite_master 
+                    WHERE type='table' AND name='articles'
+                """)
+                exists = result.scalar() > 0
+            
+            if exists:
+                print("✅ Table 'articles' existe déjà")
+            else:
+                print("📝 Création de la table 'articles'...")
+                conn.exec_driver_sql(DDL_ARTICLES_MYSQL if USE_MARIADB else DDL_ARTICLES_SQLITE)
+                print("✅ Table 'articles' créée avec succès")
+            
+            # Vérification finale
+            if USE_MARIADB:
+                result = conn.exec_driver_sql("SHOW TABLES LIKE 'articles'")
+                if result.rowcount == 0:
+                    raise Exception("La table 'articles' n'a pas été créée correctement")
+            else:
+                result = conn.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table' AND name='articles'")
+                if not result.fetchone():
+                    raise Exception("La table 'articles' n'a pas été créée correctement")
+                    
+        print("Connexion et schéma OK :", ENGINE_URL)
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de la création de la table: {e}")
+        print("Tentative de création forcée...")
+        
+        # Tentative de création forcée
+        try:
+            with engine.begin() as conn:
+                if USE_MARIADB:
+                    conn.exec_driver_sql("DROP TABLE IF EXISTS articles")
+                conn.exec_driver_sql(DDL_ARTICLES_MYSQL if USE_MARIADB else DDL_ARTICLES_SQLITE)
+            print("✅ Table créée après suppression forcée")
+        except Exception as e2:
+            print(f"❌ Impossible de créer la table: {e2}")
+            raise
+
+# Création de la table
+create_table_safely()
+
+# ==== VADER + CLEAN ==========================================================
+analyzer = SentimentIntensityAnalyzer()
+
+def clean_text_soft(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
+    text = html.unescape(text)
+    text = BeautifulSoup(text, "html.parser").get_text(" ", strip=True)
+    text = re.sub(r'(https?://\S+|www\.\S+)', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+def label_from_compound(x: float) -> str:
+    return "Positive" if x >= 0.05 else ("Negative" if x <= -0.05 else "Neutral")
+
+def generate_url_hash(url: str) -> str:
+    """Génère un hash MD5 de l'URL pour la déduplication"""
+    if not url:
+        return ""
+    return hashlib.md5(url.encode('utf-8')).hexdigest()
+
+# ==== GDELT -> DF avec Multiple Batches ====================================
+def get_multiple_batches(num_batches=6):
+    gd = GdeltDoc()
+    all_articles = []
+    from datetime import datetime, timedelta
+    import time
+    
+    start_date = datetime(2024, 1, 1)
+    end_date = datetime(2025, 9, 20)
+    total_days = (end_date - start_date).days
+    days_per_batch = total_days // num_batches
+    current_date = start_date
+    
+    for i in range(num_batches):
+        if i == num_batches - 1:
+            period_end = end_date
+        else:
+            period_end = current_date + timedelta(days=days_per_batch)
+            
+        f = Filters(
+            start_date=current_date.strftime("%Y-%m-%d"),
+            end_date=period_end.strftime("%Y-%m-%d"),
+            num_records=250,
+            language="ENGLISH",
+            domain=["bbc.co.uk", "bloomberg.com", "theguardian.com", "ft.com","economist.com"]
+        )
+        
+        try:
+            df_batch = gd.article_search(f)
+            if not df_batch.empty:
+                all_articles.append(df_batch)
+                print(f"Batch {i+1} ({current_date.strftime('%Y-%m-%d')} à {period_end.strftime('%Y-%m-%d')}): {len(df_batch)} articles")
+        except Exception as e:
+            print(f"Erreur batch {i+1}: {e}")
+            
+        current_date = period_end
+        time.sleep(1)
+    
+    if all_articles:
+        final_df = pd.concat(all_articles, ignore_index=True)
+        final_df = final_df.drop_duplicates(subset=['url'], keep='first')
+        print(f"Total final après suppression doublons: {len(final_df)} articles")
+        return final_df
+    return pd.DataFrame()
+
+# ==== SCORING ================================================================
+def sentiment_on_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+        
+    title   = df["title"]        if "title" in df.columns else pd.Series([""]*len(df))
+    content = df["content"]      if "content" in df.columns else pd.Series([""]*len(df))
+    desc    = df["description"]  if "description" in df.columns else pd.Series([""]*len(df))
+    snip    = df["snippet"]      if "snippet" in df.columns else pd.Series([""]*len(df))
+    lang    = df["language"]     if "language" in df.columns else pd.Series([""]*len(df))
+    url     = df["url"]          if "url" in df.columns else df.get("DocumentIdentifier", pd.Series([""]*len(df)))
+    source  = df["domain"]       if "domain" in df.columns else df.get("sourceCommonName", pd.Series([""]*len(df)))
+    
+    # Gestion séparée des deux types de dates
+    published_date = None
+    gdelt_date = None
+    
+    # Date de publication de l'article (priorité : publishdate > date)
+    if "publishdate" in df.columns:
+        published_date = df["publishdate"]
+    elif "date" in df.columns:
+        published_date = df["date"]
+    else:
+        published_date = pd.Series([None]*len(df))
+    
+    # Date de découverte par GDELT
+    if "seendate" in df.columns:
+        gdelt_date = df["seendate"]
+    else:
+        gdelt_date = pd.Series([None]*len(df))
+    
+    full_text = (title.fillna("") + " " + content.fillna("") + " " + desc.fillna("") + " " + snip.fillna("")).map(clean_text_soft)
+    scores = full_text.map(lambda t: analyzer.polarity_scores(t) if t else {"compound":0,"pos":0,"neu":1,"neg":0})
+    
+    out = pd.DataFrame({
+        "source":  source.astype(str).str[:255],
+        "url":     url.astype(str).str[:1024],
+        "url_hash": url.astype(str).map(generate_url_hash),
+        "title":   title.astype(str),
+        "description": desc.astype(str),
+        "content": content.astype(str),
+        "full_text": full_text,
+        "language": lang.astype(str).str[:16],
+        "published_date": published_date,  # Date de publication
+        "gdelt_date": gdelt_date          # Date de découverte GDELT
+    })
+    
+    out["sentiment_compound"] = scores.map(lambda s: s["compound"])
+    out["sentiment_pos"]      = scores.map(lambda s: s["pos"])
+    out["sentiment_neu"]      = scores.map(lambda s: s["neu"])
+    out["sentiment_neg"]      = scores.map(lambda s: s["neg"])
+    out["sentiment_label"]    = out["sentiment_compound"].map(label_from_compound)
+    
+    print("🔍 COLONNES DATES ORIGINALES:")
+    if published_date is not None and not published_date.empty and published_date.notna().any():
+        print(f"published_date exemples: {published_date.dropna().head(3).tolist()}")
+    if gdelt_date is not None and not gdelt_date.empty and gdelt_date.notna().any():
+        print(f"gdelt_date exemples: {gdelt_date.dropna().head(3).tolist()}")
+    
+    print(f"Résultat final - published_date nulles: {out['published_date'].isna().sum()}/{len(out)}")
+    print(f"Résultat final - gdelt_date nulles: {out['gdelt_date'].isna().sum()}/{len(out)}")
+    
+    return out
+
+# ==== FONCTION DE NETTOYAGE DES DATES ======================================
+def _to_sql_value_dt(x):
+    """Convertit une valeur de date en string pour stockage SQL"""
+    if x is None:
+        return None
+    try:
+        import pandas as pd
+        if pd.isna(x):
+            return None
+    except Exception:
+        pass
+    if isinstance(x, str):
+        s = x.strip()
+        if s == "" or s.lower() in ("none", "nan", "nat", "null"):
+            return None
+        return s
+    return str(x)
+
+# ==== UPSERT EN DB ===========================================================
+def upsert_articles(df_scored: pd.DataFrame):
+    if df_scored.empty:
+        print("Aucun article à insérer.")
+        return 0, 0
+
+    # Vérification que la table existe avant insertion
+    try:
+        with engine.begin() as conn:
+            if USE_MARIADB:
+                result = conn.exec_driver_sql("SHOW TABLES LIKE 'articles'")
+                if result.rowcount == 0:
+                    raise Exception("Table 'articles' non trouvée")
+            else:
+                result = conn.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table' AND name='articles'")
+                if not result.fetchone():
+                    raise Exception("Table 'articles' non trouvée")
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        print("Recréation de la table...")
+        create_table_safely()
+
+    if USE_MARIADB:
+        cols = ["source","url","url_hash","title","description","content","full_text",
+                "published_date","gdelt_date","language",
+                "sentiment_compound","sentiment_pos","sentiment_neu","sentiment_neg","sentiment_label"]
+    else:
+        cols = ["source","url","title","description","content","full_text",
+                "published_date","gdelt_date","language",
+                "sentiment_compound","sentiment_pos","sentiment_neu","sentiment_neg","sentiment_label"]
+
+    for c in cols:
+        if c not in df_scored.columns:
+            df_scored[c] = None
+
+    payload = []
+    for _, r in df_scored.iterrows():
+        rec = {c: r.get(c) for c in cols}
+        rec["published_date"] = _to_sql_value_dt(rec["published_date"])
+        rec["gdelt_date"] = _to_sql_value_dt(rec["gdelt_date"])
+        payload.append(rec)
+
+    try:
+        with engine.begin() as conn:
+            if USE_MARIADB:
+                sql = text("""
+                INSERT INTO articles
+                  (source, url, url_hash, title, description, content, full_text,
+                   gdelt_date, language,
+                   sentiment_compound, sentiment_pos, sentiment_neu, sentiment_neg, sentiment_label)
+                VALUES
+                  (:source, :url, :url_hash, :title, :description, :content, :full_text,
+                   :gdelt_date, :language,
+                   :sentiment_compound, :sentiment_pos, :sentiment_neu, :sentiment_neg, :sentiment_label)
+                ON DUPLICATE KEY UPDATE
+                  title=VALUES(title),
+                  description=VALUES(description),
+                  content=VALUES(content),
+                  full_text=VALUES(full_text),
+                  gdelt_date=VALUES(gdelt_date),
+                  language=VALUES(language),
+                  sentiment_compound=VALUES(sentiment_compound),
+                  sentiment_pos=VALUES(sentiment_pos),
+                  sentiment_neu=VALUES(sentiment_neu),
+                  sentiment_neg=VALUES(sentiment_neg),
+                  sentiment_label=VALUES(sentiment_label)
+                """)
+            else:
+                sql = text("""
+                INSERT INTO articles
+                  (source, url, title, description, content, full_text,
+                   gdelt_date, language,
+                   sentiment_compound, sentiment_pos, sentiment_neu, sentiment_neg, sentiment_label)
+                VALUES
+                  (:source, :url, :title, :description, :content, :full_text,
+                   :gdelt_date, :language,
+                   :sentiment_compound, :sentiment_pos, :sentiment_neu, :sentiment_neg, :sentiment_label)
+                ON CONFLICT(url) DO UPDATE SET
+                  title=excluded.title,
+                  description=excluded.description,
+                  content=excluded.content,
+                  full_text=excluded.full_text,
+                  gdelt_date=excluded.gdelt_date,
+                  language=excluded.language,
+                  sentiment_compound=excluded.sentiment_compound,
+                  sentiment_pos=excluded.sentiment_pos,
+                  sentiment_neu=excluded.sentiment_neu,
+                  sentiment_neg=excluded.sentiment_neg,
+                  sentiment_label=excluded.sentiment_label
+                """)
+
+            conn.execute(sql, payload)
+
+        print(f"✅ Écrit dans la base: {len(payload)} lignes (insert+update confondus).")
+        return len(payload), 0
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de l'insertion: {e}")
+        
+        # En cas d'erreur, afficher quelques exemples de données pour debug
+        print("🔍 Exemples de données à insérer:")
+        for i, item in enumerate(payload[:3]):
+            print(f"  Ligne {i+1}: {list(item.keys())}")
+        raise
+
+# ==== EXÉCUTION ==============================================================
+print("Récupération des articles GDELT...")
+df = get_multiple_batches(6)
+
+if not df.empty:
+    print("Analyse de sentiment...")
+    scored = sentiment_on_df(df)
+    
+    if not scored.empty:
+        print("\nAperçu des résultats:")
+        print(scored[["title","sentiment_label","sentiment_compound"]].head(10))
+        
+        print("\nInsertion en base de données...")
+        upsert_articles(scored)
+        print("✅ Terminé avec succès :", ENGINE_URL)
+    else:
+        print("Aucun article après scoring.")
+else:
+    print("Aucun article récupéré depuis GDELT.")
